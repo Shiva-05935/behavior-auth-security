@@ -5,13 +5,7 @@ import {
 } from "./security/attackLogs.js";
 import nodemailer from "nodemailer";
 import cors from "cors";
-import {
-  ddosProtection,
-  ipBlocker,
-} from "./security/ddosProtection.js";
-const app = express();
-app.use(cors());
-app.use(ipBlocker);
+
 
 app.use(ddosProtection);
 app.use(cors());
