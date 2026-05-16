@@ -6,15 +6,13 @@ export default function MetricCard({ icon: Icon, label, value, unit, delay = 0 }
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="bg-card rounded-2xl border border-border p-5 flex flex-col gap-2"
+      className="bg-card rounded-2xl border p-5 flex flex-col items-center text-center gap-2 shadow-sm"
     >
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="w-4 h-4" />
-        <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
-      </div>
+      {Icon && <Icon className="w-5 h-5 text-primary" />}
+      <span className="text-xs text-muted-foreground">{label}</span>
       <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-bold text-foreground">{value}</span>
-        {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+        <span className="text-2xl font-bold">{value}</span>
+        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
     </motion.div>
   );

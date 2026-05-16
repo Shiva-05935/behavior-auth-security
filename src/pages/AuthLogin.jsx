@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { Fingerprint, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   compareBehavior,
   setSession,
 } from "@/lib/behaviorStore";
+import { recordSessionEvent, isIpBlocked, recordVisitor } from "@/lib/ipTracker";
 
 const MAX_ATTEMPTS = 3;
 
@@ -30,11 +30,15 @@ export default function AuthLogin() {
   const [isTyping, setIsTyping] = useState(false);
 
   const collectorRef = useRef(null);
-  const passwordRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     collectorRef.current = createBehaviorCollector();
+    // Track this visitor's IP immediately
+    isIpBlocked().then((blocked) => {
+      if (blocked) { navigate("/blocked"); return; }
+      recordVisitor();
+    });
   }, []);
 
   const handlePasswordKeyDown = useCallback((e) => {
@@ -66,6 +70,10 @@ export default function AuthLogin() {
       return;
     }
 
+    // Re-check block status before each attempt
+    const blocked = await isIpBlocked();
+    if (blocked) { navigate("/blocked"); return; }
+
     setLoading(true);
     setAlert({ ...alert, visible: false });
 
@@ -81,6 +89,7 @@ export default function AuthLogin() {
     const behaviorData = collectorRef.current?.getAnalysis();
     const savedProfile = getUserBehaviorProfile(email);
     const comparison = compareBehavior(behaviorData, savedProfile);
+    const attemptsUsedNow = MAX_ATTEMPTS - attemptsLeft;
 
     if (comparison.match) {
       setSession({
@@ -88,8 +97,10 @@ export default function AuthLogin() {
         name: authResult.user.name,
         behaviorData,
         comparison,
-        attemptsUsed: MAX_ATTEMPTS - attemptsLeft,
+        attemptsUsed: attemptsUsedNow,
       });
+      // Record successful login
+      recordSessionEvent({ email, event: "logged_in", behaviorConfidence: comparison.confidence, failedAttempts: attemptsUsedNow });
       setAlert({ type: "success", message: "Login successful! Behavior verified.", visible: true });
       setTimeout(() => navigate("/dashboard"), 800);
     } else {
@@ -97,6 +108,8 @@ export default function AuthLogin() {
       setAttemptsLeft(newAttempts);
 
       if (newAttempts <= 0) {
+        // Record suspicious activity — needs OTP
+        recordSessionEvent({ email, event: "otp_required", behaviorConfidence: comparison.confidence, failedAttempts: MAX_ATTEMPTS, otpUsed: true });
         setAlert({
           type: "error",
           message: "Behavior mismatch detected. Redirecting to OTP verification…",
@@ -104,6 +117,7 @@ export default function AuthLogin() {
         });
         setTimeout(() => navigate("/otp-verify", { state: { email, name: authResult.user.name, behaviorData, comparison } }), 1500);
       } else {
+        recordSessionEvent({ email, event: "failed_attempts", failedAttempts: MAX_ATTEMPTS - newAttempts });
         setAlert({
           type: "warning",
           message: `Behavior mismatch detected. ${newAttempts} attempt${newAttempts !== 1 ? "s" : ""} remaining.`,
@@ -118,69 +132,47 @@ export default function AuthLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative"
+        className="w-full max-w-md"
       >
+        {/* Header */}
         <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4"
-          >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <Fingerprint className="w-8 h-8 text-primary" />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-foreground">Behavior Auth</h1>
+          </div>
+          <h1 className="text-2xl font-bold">Behavior Auth</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Authenticate using your unique typing & mouse patterns
           </p>
-
-          {/* Tech stack badges */}
-          <div className="mt-4 space-y-2">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Tech Stack</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                <span className="w-2 h-2 rounded-full bg-orange-500"></span> Java
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Python
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span> HTML
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
-                <span className="w-2 h-2 rounded-full bg-yellow-500"></span> JS
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span> CSS
-              </span>
-            </div>
-            <div className="flex justify-center gap-4 mt-1">
-              <span className="text-[11px] text-muted-foreground">Backend: Java / Python</span>
-              <span className="text-muted-foreground text-[11px]">•</span>
-              <span className="text-[11px] text-muted-foreground">Frontend: HTML / JS / CSS</span>
-            </div>
-          </div>
         </div>
 
-        <div className="bg-card rounded-3xl border border-border shadow-sm p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <StatusAlert {...alert} />
+        {/* Tech stack badges */}
+        <div className="flex flex-wrap justify-center gap-2 mb-6">
+          <span className="text-[10px] font-medium text-muted-foreground">Tech Stack</span>
+          {["Java", "Python", "HTML", "JS", "CSS"].map((t) => (
+            <span key={t} className="px-2 py-0.5 bg-secondary text-secondary-foreground text-[10px] rounded-full font-medium">
+              {t}
+            </span>
+          ))}
+        </div>
+        <p className="text-center text-[10px] text-muted-foreground mb-6">
+          Backend: Java / Python • Frontend: HTML / JS / CSS
+        </p>
 
+        {/* Card */}
+        <div className="bg-card rounded-2xl border shadow-sm p-6 space-y-5">
+          <StatusAlert {...alert} />
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email or Username</Label>
+              <Label>Email or Username</Label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="email"
                   type="email"
                   placeholder="admin@test.com"
                   value={email}
@@ -191,14 +183,15 @@ export default function AuthLogin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label>Password</Label>
+                <AttemptIndicator attemptsLeft={attemptsLeft} maxAttempts={MAX_ATTEMPTS} />
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="password"
-                  ref={passwordRef}
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={handlePasswordKeyDown}
@@ -213,19 +206,16 @@ export default function AuthLogin() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <BehaviorIndicator isCollecting={isTyping} />
             </div>
 
-            <BehaviorIndicator isCollecting={isTyping} />
-
-            <div className="flex items-center justify-between">
-              <AttemptIndicator attemptsLeft={attemptsLeft} maxAttempts={MAX_ATTEMPTS} />
+            <div className="flex justify-end">
+              <Link to="/reset-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 rounded-xl text-base font-semibold"
-            >
+            <Button type="submit" className="w-full h-12 rounded-xl text-base font-semibold" disabled={loading}>
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -237,9 +227,11 @@ export default function AuthLogin() {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
+          <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary font-medium hover:underline">Register</Link>
+            <Link to="/register" className="text-primary font-medium hover:underline">
+              Register
+            </Link>
           </p>
         </div>
       </motion.div>

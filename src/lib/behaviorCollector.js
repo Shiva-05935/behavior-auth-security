@@ -46,13 +46,11 @@ export function createBehaviorCollector() {
     const avgInterval = intervals.length > 0 ? intervals.reduce((a, b) => a + b, 0) / intervals.length : 0;
     const avgHoldDuration = holds.length > 0 ? holds.reduce((a, b) => a + b, 0) / holds.length : 0;
 
-    // Calculate typing speed (chars per minute)
     const totalTime = keyPresses.length > 1
       ? (keyPresses[keyPresses.length - 1].timestamp - keyPresses[0].timestamp) / 1000
       : 0;
     const typingSpeed = totalTime > 0 ? Math.round((keyPresses.length / totalTime) * 60) : 0;
 
-    // Mouse speed
     let totalMouseDist = 0;
     let totalMouseTime = 0;
     for (let i = 1; i < mousePositions.length; i++) {
@@ -63,7 +61,6 @@ export function createBehaviorCollector() {
     }
     const mouseSpeed = totalMouseTime > 0 ? Math.round((totalMouseDist / totalMouseTime) * 1000) : 0;
 
-    // Mouse movement accuracy (smoothness) — lower jitter = higher accuracy
     let jitterSum = 0;
     for (let i = 2; i < mousePositions.length; i++) {
       const dx1 = mousePositions[i].x - mousePositions[i - 1].x;

@@ -9,6 +9,7 @@ import StatusAlert from "@/components/auth/StatusAlert";
 import BehaviorIndicator from "@/components/auth/BehaviorIndicator";
 import { createBehaviorCollector } from "@/lib/behaviorCollector";
 import { registerUser, saveBehaviorProfile } from "@/lib/behaviorStore";
+import { recordSessionEvent, isIpBlocked, recordVisitor } from "@/lib/ipTracker";
 
 const STEPS = ["account", "behavior", "done"];
 
@@ -32,6 +33,11 @@ export default function Register() {
 
   useEffect(() => {
     collectorRef.current = createBehaviorCollector();
+    // Track visitor IP on page load
+    isIpBlocked().then((blocked) => {
+      if (blocked) navigate("/blocked");
+      else recordVisitor();
+    });
   }, []);
 
   useEffect(() => {
@@ -81,6 +87,8 @@ export default function Register() {
       setAlert({ type: "error", message: result.error, visible: true });
       return;
     }
+    // Record registration event with IP
+    recordSessionEvent({ email, event: "registered" });
     setAlert({ type: "info", message: "", visible: false });
     setStep("behavior");
   };
@@ -116,177 +124,110 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative"
+        className="w-full max-w-md"
       >
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <Fingerprint className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
+          <h1 className="text-2xl font-bold">Create Account</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Register and set your behavioral biometric profile
           </p>
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="flex items-center justify-center gap-2 mb-6">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                STEPS.indexOf(step) >= i
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground"
+            <div key={s} className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                STEPS.indexOf(step) >= i ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
               }`}>
                 {i + 1}
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`w-8 h-0.5 transition-all ${
-                  STEPS.indexOf(step) > i ? "bg-primary" : "bg-border"
-                }`} />
+                <div className={`w-8 h-0.5 ${STEPS.indexOf(step) > i ? "bg-primary" : "bg-border"}`} />
               )}
             </div>
           ))}
         </div>
-        <div className="flex justify-center gap-12 mb-6 text-xs text-muted-foreground">
-          <span className={step === "account" ? "text-primary font-medium" : ""}>Account</span>
-          <span className={step === "behavior" ? "text-primary font-medium" : ""}>Behavior</span>
-          <span className={step === "done" ? "text-primary font-medium" : ""}>Done</span>
+        <div className="flex justify-center gap-8 text-[10px] text-muted-foreground mb-6">
+          <span>Account</span><span>Behavior</span><span>Done</span>
         </div>
 
-        <div className="bg-card rounded-3xl border border-border shadow-sm p-8">
+        {/* Card */}
+        <div className="bg-card rounded-2xl border shadow-sm p-6 space-y-5">
+          <StatusAlert {...alert} />
+
           <AnimatePresence mode="wait">
             {/* Step 1: Account details */}
             {step === "account" && (
-              <motion.form
-                key="account"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                onSubmit={handleAccountSubmit}
-                className="space-y-4"
-              >
-                <StatusAlert {...alert} />
-
+              <motion.form key="account" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={handleAccountSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Full Name</Label>
+                  <Label>Full Name</Label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      placeholder="John Doe"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="pl-10 h-12 rounded-xl"
-                    />
+                    <Input placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className="pl-10 h-12 rounded-xl" />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Email</Label>
+                  <Label>Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 rounded-xl"
-                    />
+                    <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl" />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Password</Label>
+                  <Label>Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Min. 6 characters"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 pr-10 h-12 rounded-xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
+                    <Input type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-10 h-12 rounded-xl" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Confirm Password</Label>
+                  <Label>Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="Repeat password"
-                      value={confirm}
-                      onChange={(e) => setConfirm(e.target.value)}
-                      className="pl-10 h-12 rounded-xl"
-                    />
+                    <Input type="password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10 h-12 rounded-xl" />
                   </div>
                 </div>
-
-                <Button type="submit" className="w-full h-12 rounded-xl text-base font-semibold mt-2">
-                  Continue →
-                </Button>
+                <Button type="submit" className="w-full h-12 rounded-xl text-base font-semibold">Continue →</Button>
               </motion.form>
             )}
 
             {/* Step 2: Behavior sample */}
             {step === "behavior" && (
-              <motion.div
-                key="behavior"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-5"
-              >
+              <motion.div key="behavior" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div className="text-center">
-                  <h2 className="font-semibold text-foreground">Record Typing Pattern</h2>
+                  <h2 className="text-lg font-semibold">Record Typing Pattern</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Type your password <strong>{REQUIRED_SAMPLES} times</strong> naturally so the system learns your unique keystroke rhythm.
                   </p>
                 </div>
 
-                <StatusAlert {...alert} />
-
                 {/* Sample progress */}
-                <div className="flex justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   {Array.from({ length: REQUIRED_SAMPLES }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-2 w-10 rounded-full transition-all duration-300 ${
-                        i < sampleCount ? "bg-primary" : "bg-secondary"
-                      }`}
-                    />
+                    <div key={i} className={`w-3 h-3 rounded-full transition-all ${i < sampleCount ? "bg-primary scale-110" : "bg-border"}`} />
                   ))}
+                  <span className="text-xs text-muted-foreground">{sampleCount}/{REQUIRED_SAMPLES} samples recorded</span>
                 </div>
-                <p className="text-center text-xs text-muted-foreground">
-                  {sampleCount}/{REQUIRED_SAMPLES} samples recorded
-                </p>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Type your password</Label>
+                  <Label>Type your password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       type="password"
-                      placeholder="Type your password naturally…"
+                      placeholder="••••••••"
                       value={samplePassword}
                       onChange={(e) => setSamplePassword(e.target.value)}
                       onKeyDown={handleSampleKeyDown}
@@ -296,24 +237,17 @@ export default function Register() {
                       autoFocus
                     />
                   </div>
+                  <BehaviorIndicator isCollecting={isTyping} />
                 </div>
-
-                <BehaviorIndicator isCollecting={isTyping} />
 
                 {sampleCount < REQUIRED_SAMPLES ? (
                   <Button onClick={handleSampleSubmit} className="w-full h-12 rounded-xl text-base font-semibold">
                     Record Sample ({sampleCount + 1}/{REQUIRED_SAMPLES})
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleFinalize}
-                    disabled={loading}
-                    className="w-full h-12 rounded-xl text-base font-semibold bg-emerald-600 hover:bg-emerald-700"
-                  >
+                  <Button onClick={handleFinalize} className="w-full h-12 rounded-xl text-base font-semibold" disabled={loading}>
                     {loading ? (
-                      <span className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Saving profile…
-                      </span>
+                      <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Saving profile…</span>
                     ) : (
                       "Save Behavior Profile ✓"
                     )}
@@ -324,25 +258,13 @@ export default function Register() {
 
             {/* Step 3: Done */}
             {step === "done" && (
-              <motion.div
-                key="done"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-5 py-4"
-              >
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">You're all set, {name}!</h2>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Your account and behavioral biometric profile have been created. Future logins require an <strong>80% behavior match</strong>.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => navigate("/")}
-                  className="w-full h-12 rounded-xl text-base font-semibold"
-                >
+              <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-5">
+                <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+                <h2 className="text-xl font-semibold">You're all set, {name}!</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your account and behavioral biometric profile have been created. Future logins require an <strong>80% behavior match</strong>.
+                </p>
+                <Button onClick={() => navigate("/")} className="w-full h-12 rounded-xl text-base font-semibold">
                   Go to Login
                 </Button>
               </motion.div>
@@ -350,7 +272,7 @@ export default function Register() {
           </AnimatePresence>
 
           {step === "account" && (
-            <p className="text-center text-sm text-muted-foreground mt-6">
+            <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link to="/" className="text-primary font-medium hover:underline">Sign in</Link>
             </p>

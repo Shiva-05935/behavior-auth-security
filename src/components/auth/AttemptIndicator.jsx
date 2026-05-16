@@ -6,12 +6,9 @@ export default function AttemptIndicator({ attemptsLeft, maxAttempts }) {
       {Array.from({ length: maxAttempts }).map((_, i) => {
         const used = i >= attemptsLeft;
         return (
-          <div
-            key={i}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
-              used ? "bg-destructive/70" : "bg-primary/30"
-            }`}
-          />
+          <div key={i} className={`transition-all duration-300 ${used ? "text-destructive opacity-60" : "text-primary"}`}>
+            {used ? <ShieldX className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+          </div>
         );
       })}
       <span className="text-xs text-muted-foreground ml-1">

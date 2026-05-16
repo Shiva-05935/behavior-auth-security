@@ -58,6 +58,15 @@ export function saveBehaviorProfile(email, profile) {
   return false;
 }
 
+export function resetPassword(email, newPassword) {
+  const users = getUsers();
+  const key = email.toLowerCase();
+  if (!users[key]) return { success: false, error: "User not found" };
+  users[key].password = newPassword;
+  saveUsers(users);
+  return { success: true };
+}
+
 export function compareBehavior(current, saved) {
   if (!saved) return { match: true, confidence: 100, details: "No saved profile — first login" };
 
@@ -72,13 +81,18 @@ export function compareBehavior(current, saved) {
   const mouseScore = Math.max(0, 100 - mouseSpeedDiff * 80);
 
   const confidence = Math.round(typingScore * 0.3 + intervalScore * 0.3 + holdScore * 0.2 + mouseScore * 0.2);
-  const match = confidence >= 80;
+  const match = confidence >= 75;
 
   return {
     match,
     confidence: Math.min(confidence, 100),
     details: match ? "Behavior pattern matches" : "Behavior mismatch detected",
-    breakdown: { typingScore: Math.round(typingScore), intervalScore: Math.round(intervalScore), holdScore: Math.round(holdScore), mouseScore: Math.round(mouseScore) }
+    breakdown: {
+      typingScore: Math.round(typingScore),
+      intervalScore: Math.round(intervalScore),
+      holdScore: Math.round(holdScore),
+      mouseScore: Math.round(mouseScore)
+    }
   };
 }
 
@@ -90,7 +104,6 @@ export function getSession() {
   const s = localStorage.getItem(SESSION_KEY);
   if (!s) return null;
   const session = JSON.parse(s);
-  // 30 min timeout
   if (Date.now() - session.loginTime > 30 * 60 * 1000) {
     clearSession();
     return null;

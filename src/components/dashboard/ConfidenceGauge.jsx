@@ -6,40 +6,28 @@ export default function ConfidenceGauge({ confidence }) {
   const label = confidence >= 75 ? "High Confidence" : confidence >= 50 ? "Medium Confidence" : "Low Confidence";
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-6 flex flex-col items-center gap-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Authentication Confidence
-      </p>
-      <div className="relative w-32 h-32 flex items-center justify-center">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--secondary))" strokeWidth="10" />
+    <div className="flex flex-col items-center gap-3 p-6">
+      <span className="text-sm text-muted-foreground font-medium">Authentication Confidence</span>
+      <div className="relative w-32 h-32">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--border))" strokeWidth="8" />
           <motion.circle
-            cx="60" cy="60" r="52" fill="none"
+            cx="50" cy="50" r="42" fill="none"
             stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-            strokeDasharray={2 * Math.PI * 52}
-            initial={{ strokeDashoffset: 2 * Math.PI * 52 }}
-            animate={{ strokeDashoffset: 2 * Math.PI * 52 * (1 - confidence / 100) }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
             className={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${confidence * 2.64} 264`}
+            initial={{ strokeDasharray: "0 264" }}
+            animate={{ strokeDasharray: `${confidence * 2.64} 264` }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
           />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-3xl font-bold"
-          >
-            {confidence}%
-          </motion.span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-2xl font-bold ${color}`}>{confidence}%</span>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${bg}`} />
-        <span className="text-sm font-medium">{label}</span>
-      </div>
+      <span className={`text-sm font-medium ${color}`}>{label}</span>
     </div>
   );
 }

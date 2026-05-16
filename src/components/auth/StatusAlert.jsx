@@ -22,13 +22,13 @@ export default function StatusAlert({ type = "info", message, visible }) {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -10, height: 0 }}
-          animate={{ opacity: 1, y: 0, height: "auto" }}
-          exit={{ opacity: 0, y: -10, height: 0 }}
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${styles[type]}`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm ${styles[type]}`}
         >
           <Icon className="w-4 h-4 shrink-0" />
-          <p className="text-sm font-medium">{message}</p>
+          {message}
         </motion.div>
       )}
     </AnimatePresence>

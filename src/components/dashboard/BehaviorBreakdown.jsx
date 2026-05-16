@@ -30,64 +30,40 @@ export default function BehaviorBreakdown({ breakdown, behaviorData }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-      className="bg-card rounded-2xl border border-border p-6 h-full flex flex-col"
+      className="bg-card rounded-2xl border p-6 shadow-sm"
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">
-        Behavior Match Breakdown
-      </p>
-      <div className="flex-1 min-h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} barSize={36}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              domain={[0, 100]}
-              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "12px",
-                fontSize: "13px"
-              }}
-              formatter={(value) => [`${value}%`, "Match Score"]}
-            />
-            <Bar dataKey="score" radius={[8, 8, 0, 0]}>
-              {chartData.map((_, index) => (
-                <Cell key={index} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <h3 className="text-base font-semibold mb-4">Behavior Match Breakdown</h3>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={chartData} barSize={32}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={(value) => [`${value}%`, "Match Score"]} />
+          <Bar dataKey="score" radius={[6, 6, 0, 0]}>
+            {chartData.map((_, index) => (
+              <Cell key={index} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
 
-      {/* Raw values */}
       {behaviorData && (
-        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
-          <div className="text-center">
-            <p className="text-lg font-bold">{behaviorData.typingSpeed}</p>
-            <p className="text-[11px] text-muted-foreground">Chars/min</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-center">
+          <div>
+            <div className="text-lg font-bold">{behaviorData.typingSpeed}</div>
+            <div className="text-xs text-muted-foreground">Chars/min</div>
           </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{behaviorData.avgInterval}ms</p>
-            <p className="text-[11px] text-muted-foreground">Avg Interval</p>
+          <div>
+            <div className="text-lg font-bold">{behaviorData.avgInterval}ms</div>
+            <div className="text-xs text-muted-foreground">Avg Interval</div>
           </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{behaviorData.avgHoldDuration}ms</p>
-            <p className="text-[11px] text-muted-foreground">Avg Hold</p>
+          <div>
+            <div className="text-lg font-bold">{behaviorData.avgHoldDuration}ms</div>
+            <div className="text-xs text-muted-foreground">Avg Hold</div>
           </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{behaviorData.mouseSpeed}</p>
-            <p className="text-[11px] text-muted-foreground">Mouse px/s</p>
+          <div>
+            <div className="text-lg font-bold">{behaviorData.mouseSpeed}</div>
+            <div className="text-xs text-muted-foreground">Mouse px/s</div>
           </div>
         </div>
       )}
