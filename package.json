@@ -16,7 +16,7 @@
   "build": "vite build",
   "preview": "vite preview",
   "start": "serve -s dist -l 10000"
-}
+},
   "dependencies": {
     "@base44/sdk": "^0.8.27",
     "@base44/vite-plugin": "^1.0.13",
