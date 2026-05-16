@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import {
   attackLogs,
 } from "./security/attackLogs.js";
@@ -9,6 +10,7 @@ import {
   ipBlocker,
 } from "./security/ddosProtection.js";
 const app = express();
+app.use(cors());
 app.use(ipBlocker);
 
 app.use(ddosProtection);

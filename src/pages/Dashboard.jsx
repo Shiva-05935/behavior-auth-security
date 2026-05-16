@@ -133,9 +133,7 @@ export default function Dashboard() {
 
     try {
 
-      const response = await fetch(
-        "http://localhost:5000/api/attacks"
-      );
+      const response = await fetch("https://behavior-auth-backend.onrender.com/api/attacks");
 
       const data =
         await response.json();
